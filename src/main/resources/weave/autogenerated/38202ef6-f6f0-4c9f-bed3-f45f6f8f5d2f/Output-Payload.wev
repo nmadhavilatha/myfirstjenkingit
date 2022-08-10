@@ -1,0 +1,4 @@
+%dw 2.0
+
+type auto_38202ef6_f6f0_4c9f_bed3_f45f6f8f5d2f_Output_Payload = Array<{|  oid: Number,   amname: String,   amhandler: Any,   amtype: String|}>
+
