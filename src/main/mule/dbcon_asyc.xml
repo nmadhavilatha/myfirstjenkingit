@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:db="http://www.mulesoft.org/schema/mule/db"
+	xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+	<http:listener-config name="HTTP_Listener_config" doc:name="HTTP Listener config" doc:id="2f31c340-14d2-43ea-8dd5-6c5b148a44b5" >
+		<http:listener-connection host="0.0.0.0" port="8081" />
+	</http:listener-config>
+	<db:config name="Database_Config" doc:name="Database Config" doc:id="a80b5c14-14da-429f-a8bb-6b24782db427" >
+		<db:generic-connection url="jdbc:postgresql://localhost:5432/postgres" driverClassName="org.postgresql.Driver" user="postgres" password="manager" />
+	</db:config>
+	<sub-flow name="select_subflow" doc:id="38202ef6-f6f0-4c9f-bed3-f45f6f8f5d2f" >
+		<try doc:name="Try" doc:id="894f4dcd-3c70-4bf0-977c-39678081b012" >
+			<db:select doc:name="Select" doc:id="2b7b73f3-c654-476a-b6c9-e232f175ef0a" config-ref="Database_Config">
+				<db:sql ><![CDATA[select * from pg_am]]></db:sql>
+			</db:select>
+			<error-handler >
+				<on-error-continue enableNotifications="true" logException="true" doc:name="On Error Continue" doc:id="c8c4251c-0a3e-4342-90b3-55e4828e3b21" >
+					<set-variable value="#[true]" doc:name="Set Variable" doc:id="6f76594b-a48e-4981-b168-1c80cd495241" variableName="gotError"/>
+					<logger level="INFO" doc:name="Logger" doc:id="afa2a905-0728-4633-a1c7-ba7fbca57d75" message="#[payload]"/>
+				</on-error-continue>
+			</error-handler>
+		</try>
+	</sub-flow>
+	<flow name="dbcon_asycFlow" doc:id="e52bff19-1d46-4171-9c5f-256446c1b698" >
+		<http:listener doc:name="Listener" doc:id="f954f6d6-6678-48b8-8086-660ea329f12c" config-ref="HTTP_Listener_config" path="/dbconnect"/>
+		<logger level="INFO" doc:name="Logger" doc:id="5be868ff-bfd3-4af0-9f7e-a2ecd94a882e" message="before async"/>
+		<async doc:name="Async" doc:id="239ce591-ccbc-4e6e-b90a-5d8d4b5db074" >
+			<logger level="INFO" doc:name="Logger" doc:id="f2773afc-c94f-4313-95a1-641b56695042" message="i am async logger"/>
+			<set-payload value="I am async payload" doc:name="Set Payload" doc:id="1ed8e012-e310-4699-b527-08ebc43be7b5" />
+		</async>
+		<flow-ref doc:name="Flow Reference" doc:id="ddd4627b-b614-4a3d-b606-51961d38ec23" name="select_subflow" />
+		<ee:transform doc:name="Transform Message" doc:id="73e441ac-6c69-4bae-b817-3fc163126636" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<logger level="INFO" doc:name="Logger" doc:id="29ff4137-08e4-4f88-b8d1-1751174d2845" message="#[payload]"/>
+		<error-handler >
+			<on-error-propagate enableNotifications="true" logException="true" doc:name="On Error Propagate" doc:id="97eba993-5ec1-442a-90b0-0a6076d694e3" type="ANY">
+				<logger level="INFO" doc:name="Logger" doc:id="77edf800-e2c5-438a-9834-0bfee5fa23be" message="#[payload]"/>
+			</on-error-propagate>
+		</error-handler>
+	</flow>
+</mule>
